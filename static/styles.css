@@ -1,0 +1,211 @@
+:root {
+    --bg: #090b13;
+    --panel: #121826;
+    --panel-soft: #1b2335;
+    --text: #f4f6ff;
+    --muted: #9ca7c9;
+    --accent: #e50914;
+    --accent-2: #00b3ff;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: radial-gradient(circle at top, #1b2342 0%, var(--bg) 45%);
+    color: var(--text);
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 3rem;
+    background: rgba(9, 11, 19, 0.88);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logo {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+}
+
+.top-nav nav {
+    display: flex;
+    gap: 1.25rem;
+}
+
+.top-nav a {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+    opacity: 0.92;
+}
+
+.top-nav a:hover {
+    color: var(--accent-2);
+}
+
+main {
+    padding: 1.5rem 2.75rem 4rem;
+}
+
+.hero {
+    min-height: 40vh;
+    display: flex;
+    align-items: flex-end;
+    padding: 2rem;
+    border-radius: 18px;
+    background:
+        linear-gradient(120deg, rgba(6, 8, 16, 0.96), rgba(6, 8, 16, 0.3)),
+        url("https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=1800&q=80") center/cover;
+    margin-bottom: 2rem;
+}
+
+.hero h1 {
+    margin: 0.3rem 0;
+    font-size: clamp(1.8rem, 3.5vw, 3rem);
+}
+
+.hero p {
+    max-width: 50ch;
+    color: #d8ddf3;
+}
+
+.hero-tag {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.75rem;
+    color: #9fb7ff;
+}
+
+button {
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: white;
+    font-weight: 700;
+    padding: 0.7rem 1.4rem;
+    cursor: pointer;
+}
+
+.category-row h2 {
+    margin: 1rem 0;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.card {
+    background: linear-gradient(180deg, var(--panel-soft), var(--panel));
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 1rem;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+}
+
+.poster-glow {
+    height: 100px;
+    border-radius: 10px;
+    background: linear-gradient(120deg, rgba(229, 9, 20, 0.72), rgba(0, 179, 255, 0.75));
+    margin-bottom: 0.9rem;
+}
+
+.meta-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    color: var(--muted);
+    font-size: 0.83rem;
+}
+
+.pill {
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.pill.movie {
+    background: #5144ff;
+}
+
+.pill.show {
+    background: #008454;
+}
+
+.card h3 {
+    margin: 0.55rem 0 0.1rem;
+}
+
+.genre {
+    margin: 0;
+    color: #b6c2f8;
+    font-size: 0.92rem;
+}
+
+.card p {
+    color: #d7defd;
+}
+
+.season-box {
+    margin-top: 0.85rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.season-box h4 {
+    margin: 0 0 0.35rem;
+    font-size: 0.87rem;
+    color: #9fb7ff;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.season-box ul {
+    margin: 0;
+    padding-left: 1rem;
+    color: #dde5ff;
+}
+
+
+.library-section {
+    margin-bottom: 2.5rem;
+}
+
+.library-title {
+    margin: 1.25rem 0 0.75rem;
+    font-size: 1.5rem;
+    color: #eef2ff;
+}
+
+.category-row h3 {
+    margin: 1rem 0;
+    font-size: 1.1rem;
+    color: #ccd8ff;
+}
+
+.card h4 {
+    margin: 0.55rem 0 0.1rem;
+    font-size: 1.1rem;
+}
+
+.season-box h5 {
+    margin: 0 0 0.35rem;
+    font-size: 0.87rem;
+    color: #9fb7ff;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
