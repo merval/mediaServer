@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>StreamSphere</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+<header class="top-nav">
+    <div class="logo">StreamSphere</div>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">TV Shows</a>
+        <a href="#">Movies</a>
+        <a href="#">My List</a>
+    </nav>
+</header>
+
+<main>
+    <section class="hero">
+        <div>
+            <p class="hero-tag">Featured Tonight</p>
+            <h1>The Last Lighthouse</h1>
+            <p>A haunting mystery series where every season reveals a deeper secret beneath the waves.</p>
+            <button>Play</button>
+        </div>
+    </section>
+
+    <section class="library-section">
+        <h2 class="library-title">Movies Library</h2>
+        {% for category, titles in movie_library.items() %}
+            <section class="category-row">
+                <h3>{{ category }}</h3>
+                <div class="cards">
+                    {% for movie in titles %}
+                        <article class="card">
+                            <div class="poster-glow"></div>
+                            <div class="meta-line">
+                                <span class="pill movie">Movie</span>
+                                <span>{{ movie.year }}</span>
+                                <span>{{ movie.rating }}</span>
+                                <span>{{ movie.duration }}</span>
+                            </div>
+                            <h4>{{ movie.title }}</h4>
+                            <p class="genre">{{ movie.genre }}</p>
+                            <p>{{ movie.description }}</p>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endfor %}
+    </section>
+
+    <section class="library-section">
+        <h2 class="library-title">TV Shows Library</h2>
+        {% for category, titles in show_library.items() %}
+            <section class="category-row">
+                <h3>{{ category }}</h3>
+                <div class="cards">
+                    {% for show in titles %}
+                        <article class="card">
+                            <div class="poster-glow"></div>
+                            <div class="meta-line">
+                                <span class="pill show">TV Show</span>
+                                <span>{{ show.year }}</span>
+                                <span>{{ show.rating }}</span>
+                            </div>
+                            <h4>{{ show.title }}</h4>
+                            <p class="genre">{{ show.genre }}</p>
+                            <p>{{ show.description }}</p>
+                            <div class="season-box">
+                                <h5>Seasons</h5>
+                                <ul>
+                                    {% for season in show.seasons %}
+                                        <li>{{ season.name }} · {{ season.episodes }} episodes</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endfor %}
+    </section>
+</main>
+</body>
+</html>
