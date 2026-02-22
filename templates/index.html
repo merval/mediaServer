@@ -32,22 +32,26 @@
         {% for category, titles in movie_library.items() %}
             <section class="category-row">
                 <h3>{{ category }}</h3>
-                <div class="cards">
-                    {% for movie in titles %}
-                        <article class="card">
-                            <div class="poster-glow"></div>
-                            <div class="meta-line">
-                                <span class="pill movie">Movie</span>
-                                <span>{{ movie.year }}</span>
-                                <span>{{ movie.rating }}</span>
-                                <span>{{ movie.duration }}</span>
-                            </div>
-                            <h4>{{ movie.title }}</h4>
-                            <p class="genre">{{ movie.genre }}</p>
-                            <p>{{ movie.description }}</p>
-                        </article>
-                    {% endfor %}
-                </div>
+                {% if titles %}
+                    <div class="cards">
+                        {% for movie in titles %}
+                            <article class="card">
+                                <div class="poster-glow"></div>
+                                <div class="meta-line">
+                                    <span class="pill movie">Movie</span>
+                                    <span>{{ movie.year or '—' }}</span>
+                                    <span>{{ movie.rating or 'NR' }}</span>
+                                    <span>{{ movie.duration or '—' }}</span>
+                                </div>
+                                <h4>{{ movie.title }}</h4>
+                                <p class="genre">{{ movie.genre or 'Unknown' }}</p>
+                                <p>{{ movie.description or 'No description available yet.' }}</p>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>No movies found in the library yet.</p>
+                {% endif %}
             </section>
         {% endfor %}
     </section>
@@ -57,29 +61,37 @@
         {% for category, titles in show_library.items() %}
             <section class="category-row">
                 <h3>{{ category }}</h3>
-                <div class="cards">
-                    {% for show in titles %}
-                        <article class="card">
-                            <div class="poster-glow"></div>
-                            <div class="meta-line">
-                                <span class="pill show">TV Show</span>
-                                <span>{{ show.year }}</span>
-                                <span>{{ show.rating }}</span>
-                            </div>
-                            <h4>{{ show.title }}</h4>
-                            <p class="genre">{{ show.genre }}</p>
-                            <p>{{ show.description }}</p>
-                            <div class="season-box">
-                                <h5>Seasons</h5>
-                                <ul>
-                                    {% for season in show.seasons %}
-                                        <li>{{ season.name }} · {{ season.episodes }} episodes</li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </article>
-                    {% endfor %}
-                </div>
+                {% if titles %}
+                    <div class="cards">
+                        {% for show in titles %}
+                            <article class="card">
+                                <div class="poster-glow"></div>
+                                <div class="meta-line">
+                                    <span class="pill show">TV Show</span>
+                                    <span>{{ show.year or '—' }}</span>
+                                    <span>{{ show.rating or 'NR' }}</span>
+                                </div>
+                                <h4>{{ show.title }}</h4>
+                                <p class="genre">{{ show.genre or 'Unknown' }}</p>
+                                <p>{{ show.description or 'No description available yet.' }}</p>
+                                <div class="season-box">
+                                    <h5>Seasons</h5>
+                                    {% if show.seasons %}
+                                        <ul>
+                                            {% for season in show.seasons %}
+                                                <li>{{ season.name }} · {{ season.episodes }} episodes</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <p>No season data available.</p>
+                                    {% endif %}
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>No TV shows found in the library yet.</p>
+                {% endif %}
             </section>
         {% endfor %}
     </section>
