@@ -1,9 +1,18 @@
 from contextlib import contextmanager
+from datetime import datetime
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, abort, jsonify, render_template, request, send_file, url_for
 from sqlalchemy import func
 
-from config import ENGINE, FLASK_DEBUG, SessionLocal, validate_required_config
+from config import (
+    ENGINE,
+    FLASK_DEBUG,
+    PLAYBACK_OUTPUT_ROOT,
+    PLAYBACK_TOKEN_MAX_AGE_SECONDS,
+    PLAYBACK_TOKEN_SECRET,
+    SessionLocal,
+    validate_required_config,
+)
 from models import (
     Actor,
     Base,
@@ -11,16 +20,20 @@ from models import (
     Episode,
     MediaFile,
     Movie,
+    PlaybackSession,
     Season,
     TVShow,
     movie_actor,
     movie_director,
 )
+from playback import PlaybackService
 
 app = Flask(__name__)
+app.logger.setLevel('INFO')
 
 validate_required_config()
 Base.metadata.create_all(ENGINE)
+playback_service = PlaybackService(PLAYBACK_OUTPUT_ROOT, PLAYBACK_TOKEN_SECRET)
 
 
 @contextmanager
@@ -182,11 +195,13 @@ def home():
     with get_session() as session:
         movie_library = {'Library Movies': get_movies_payload(session)}
         show_library = {'Library Shows': get_shows_payload(session)}
+        featured_media = session.query(MediaFile).order_by(MediaFile.last_modified.desc()).first()
 
     return render_template(
         'index.html',
         movie_library=movie_library,
         show_library=show_library,
+        featured_media=featured_media,
     )
 
 
@@ -209,6 +224,128 @@ def api_library_media_files():
     with get_session() as session:
         media_files = get_media_files_payload(session)
     return jsonify({'items': media_files, 'total': len(media_files)})
+
+
+@app.route('/api/playback/sessions', methods=['POST'])
+def create_playback_session():
+    payload = request.get_json(silent=True) or {}
+    media_id = payload.get('media_id')
+    user_session_id = payload.get('user_session_id') or request.headers.get('X-Session-Id') or request.remote_addr or 'anonymous'
+
+    if not media_id:
+        return jsonify({'error': 'media_id is required'}), 400
+
+    with get_session() as session:
+        media = session.query(MediaFile).filter(MediaFile.id == media_id).first()
+        if media is None:
+            return jsonify({'error': 'media item not found'}), 404
+
+        mode = playback_service.choose_mode(media)
+        profile = playback_service.choose_profile(media)
+
+        playback_session = PlaybackSession(
+            media_file_id=media.id,
+            user_session_id=str(user_session_id),
+            started_at=datetime.utcnow(),
+            playback_mode=mode,
+            chosen_profile=profile.name,
+        )
+        session.add(playback_session)
+        session.commit()
+        session.refresh(playback_session)
+
+        try:
+            artifact_info = playback_service.prepare_session(media, playback_session.id)
+        except Exception as exc:
+            app.logger.exception('Failed to prepare playback session for media_id=%s', media.id)
+            session.delete(playback_session)
+            session.commit()
+            return jsonify({'error': f'Unable to prepare playback artifacts: {exc}'}), 500
+
+        master_path = 'master.m3u8'
+        token = playback_service.sign_token(playback_session.id, master_path)
+        master_url = url_for('serve_playback_asset', playback_session_id=playback_session.id, asset_path=master_path, token=token)
+
+        app.logger.info(
+            'Playback session started: playback_session_id=%s media_id=%s user_session_id=%s profile=%s mode=%s',
+            playback_session.id,
+            media.id,
+            user_session_id,
+            artifact_info['profile'],
+            artifact_info['mode'],
+        )
+
+        return jsonify(
+            {
+                'playback_session_id': playback_session.id,
+                'media_id': media.id,
+                'user_session_id': user_session_id,
+                'started_at': playback_session.started_at.isoformat(),
+                'mode': artifact_info['mode'],
+                'profile': artifact_info['profile'],
+                'master_url': master_url,
+                'token_ttl_seconds': PLAYBACK_TOKEN_MAX_AGE_SECONDS,
+            }
+        )
+
+
+@app.route('/api/playback/sessions/<int:playback_session_id>/asset/<path:asset_path>')
+def serve_playback_asset(playback_session_id: int, asset_path: str):
+    token = request.args.get('token')
+    if not token:
+        abort(401)
+
+    valid = playback_service.verify_token(
+        token,
+        PLAYBACK_TOKEN_MAX_AGE_SECONDS,
+        expected_playback_session_id=playback_session_id,
+        path=asset_path,
+    )
+    if not valid:
+        abort(403)
+
+    asset = playback_service.resolve_output_path(playback_session_id, asset_path)
+    if asset is None or not asset.exists() or not asset.is_file():
+        abort(404)
+
+    if asset.suffix == '.m3u8':
+        content = asset.read_text(encoding='utf-8')
+        rewritten = _rewrite_playlist(playback_session_id, content, asset_path)
+        return app.response_class(rewritten, mimetype='application/vnd.apple.mpegurl')
+
+    if asset.suffix == '.ts':
+        return send_file(asset, mimetype='video/mp2t')
+
+    if asset.suffix == '.m4s':
+        return send_file(asset, mimetype='video/iso.segment')
+
+    return send_file(asset)
+
+
+def _rewrite_playlist(playback_session_id: int, content: str, playlist_path: str) -> str:
+    base_dir = '' if '/' not in playlist_path else playlist_path.rsplit('/', 1)[0]
+    rewritten_lines = []
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
+            rewritten_lines.append(line)
+            continue
+
+        if stripped.startswith('http://') or stripped.startswith('https://'):
+            rewritten_lines.append(line)
+            continue
+
+        relative = f'{base_dir}/{stripped}' if base_dir else stripped
+        token = playback_service.sign_token(playback_session_id, relative)
+        asset_url = url_for(
+            'serve_playback_asset',
+            playback_session_id=playback_session_id,
+            asset_path=relative,
+            token=token,
+        )
+        rewritten_lines.append(asset_url)
+
+    return '\n'.join(rewritten_lines) + '\n'
 
 
 if __name__ == '__main__':
