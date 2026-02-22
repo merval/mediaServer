@@ -1,0 +1,13 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv
+.env
+pip-wheel-metadata
+playback_output
+data
+media
