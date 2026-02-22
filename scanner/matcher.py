@@ -1,24 +1,20 @@
 from guessit import guessit
-from tmdbv3api import TMDb, Movie, TV
 
-tmdb = TMDb()
-tmdb.api_key = 'your_tmdb_api_key'
-tmdb.language = 'en'
+from config import MOVIE_API, TV_API
 
-movie_api = Movie()
-tv_api = TV()
 
 def parse_media_name(file_name):
     result = guessit(file_name)
     metadata = lookup_metadata(result)
     return {**result, **metadata}
 
+
 def lookup_metadata(guessit_result):
     metadata = {}
     if 'title' in guessit_result:
         title = guessit_result['title']
         if guessit_result.get('type') == 'movie':
-            search_results = movie_api.search(title)
+            search_results = MOVIE_API.search(title)
             if search_results:
                 movie = search_results[0]
                 metadata = {
@@ -28,7 +24,7 @@ def lookup_metadata(guessit_result):
                     'poster_url': movie.poster_path,
                 }
         elif guessit_result.get('type') == 'episode':
-            search_results = tv_api.search(title)
+            search_results = TV_API.search(title)
             if search_results:
                 show = search_results[0]
                 metadata = {
