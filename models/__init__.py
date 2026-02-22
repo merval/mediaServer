@@ -16,6 +16,38 @@ class MediaFile(Base):
     last_modified = Column(DateTime)
     media_type = Column(String)  # e.g., 'movie', 'show', 'music'
     thumbnail_path = Column(String, nullable=True)
+    container = Column(String, nullable=True)
+    bitrate = Column(Integer, nullable=True)
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    fps = Column(Float, nullable=True)
+    video_codec = Column(String, nullable=True)
+    audio_codec = Column(String, nullable=True)
+    channels = Column(Integer, nullable=True)
+    sample_rate = Column(Integer, nullable=True)
+    subtitle_count = Column(Integer, nullable=True, default=0)
+
+    streams = relationship('MediaStream', back_populates='media_file', cascade='all, delete-orphan')
+
+
+class MediaStream(Base):
+    __tablename__ = 'media_streams'
+
+    id = Column(Integer, primary_key=True)
+    media_file_id = Column(Integer, ForeignKey('media_files.id'), nullable=False)
+    stream_index = Column(Integer, nullable=True)
+    codec_type = Column(String, nullable=True)
+    codec_name = Column(String, nullable=True)
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    channels = Column(Integer, nullable=True)
+    sample_rate = Column(Integer, nullable=True)
+    bitrate = Column(Integer, nullable=True)
+    fps = Column(Float, nullable=True)
+    language = Column(String, nullable=True)
+    title = Column(String, nullable=True)
+
+    media_file = relationship('MediaFile', back_populates='streams')
 
 
 class Movie(Base):
@@ -120,4 +152,3 @@ tv_actor = Table('tv_actor', Base.metadata,
     Column('show_id', Integer, ForeignKey('tv_shows.id')),
     Column('actor_id', Integer, ForeignKey('actors.id'))
 )
-
