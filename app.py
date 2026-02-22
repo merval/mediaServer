@@ -1,9 +1,9 @@
 from contextlib import contextmanager
 
 from flask import Flask, jsonify, render_template
-from sqlalchemy import create_engine, func
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import func
 
+from config import ENGINE, FLASK_DEBUG, SessionLocal, validate_required_config
 from models import (
     Actor,
     Base,
@@ -19,9 +19,8 @@ from models import (
 
 app = Flask(__name__)
 
-engine = create_engine('sqlite:///media_library.db')
-Base.metadata.create_all(engine)
-SessionLocal = sessionmaker(bind=engine)
+validate_required_config()
+Base.metadata.create_all(ENGINE)
 
 
 @contextmanager
@@ -213,4 +212,4 @@ def api_library_media_files():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=FLASK_DEBUG)
