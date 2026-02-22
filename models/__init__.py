@@ -28,6 +28,7 @@ class MediaFile(Base):
     subtitle_count = Column(Integer, nullable=True, default=0)
 
     streams = relationship('MediaStream', back_populates='media_file', cascade='all, delete-orphan')
+    playback_sessions = relationship('PlaybackSession', back_populates='media_file', cascade='all, delete-orphan')
 
 
 class MediaStream(Base):
@@ -48,6 +49,19 @@ class MediaStream(Base):
     title = Column(String, nullable=True)
 
     media_file = relationship('MediaFile', back_populates='streams')
+
+
+class PlaybackSession(Base):
+    __tablename__ = 'playback_sessions'
+
+    id = Column(Integer, primary_key=True)
+    media_file_id = Column(Integer, ForeignKey('media_files.id'), nullable=False)
+    user_session_id = Column(String, nullable=False)
+    started_at = Column(DateTime, nullable=False)
+    playback_mode = Column(String, nullable=False)
+    chosen_profile = Column(String, nullable=False)
+
+    media_file = relationship('MediaFile', back_populates='playback_sessions')
 
 
 class Movie(Base):

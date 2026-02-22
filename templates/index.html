@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>StreamSphere</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
 <header class="top-nav">
@@ -21,10 +22,19 @@
     <section class="hero">
         <div>
             <p class="hero-tag">Featured Tonight</p>
-            <h1>The Last Lighthouse</h1>
-            <p>A haunting mystery series where every season reveals a deeper secret beneath the waves.</p>
-            <button>Play</button>
+            <h1>{{ featured_media.title if featured_media else 'No Media Found' }}</h1>
+            <p>Start playback for the latest ingested media file using a signed HLS playback session.</p>
+            {% if featured_media %}
+                <button id="play-featured" data-media-id="{{ featured_media.id }}">Play</button>
+            {% else %}
+                <button disabled>No playable media</button>
+            {% endif %}
+            <p id="player-status" class="player-status"></p>
         </div>
+    </section>
+
+    <section class="player-panel">
+        <video id="hls-player" controls playsinline></video>
     </section>
 
     <section class="library-section">
@@ -96,5 +106,59 @@
         {% endfor %}
     </section>
 </main>
+<script>
+const playButton = document.getElementById('play-featured');
+const statusNode = document.getElementById('player-status');
+const videoElement = document.getElementById('hls-player');
+
+async function startPlayback(mediaId) {
+    const userSession = localStorage.getItem('streamsphere_user_session') || crypto.randomUUID();
+    localStorage.setItem('streamsphere_user_session', userSession);
+
+    const response = await fetch('/api/playback/sessions', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({media_id: Number(mediaId), user_session_id: userSession})
+    });
+
+    if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        throw new Error(errorPayload.error || 'Unable to start playback session');
+    }
+
+    return response.json();
+}
+
+function attachHls(masterUrl) {
+    if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        videoElement.src = masterUrl;
+        videoElement.play();
+        return;
+    }
+
+    if (window.Hls && Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(masterUrl);
+        hls.attachMedia(videoElement);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play());
+        return;
+    }
+
+    throw new Error('HLS is not supported in this browser.');
+}
+
+if (playButton) {
+    playButton.addEventListener('click', async () => {
+        statusNode.textContent = 'Preparing stream...';
+        try {
+            const playback = await startPlayback(playButton.dataset.mediaId);
+            attachHls(playback.master_url);
+            statusNode.textContent = `Playing profile ${playback.profile} (${playback.mode})`;
+        } catch (error) {
+            statusNode.textContent = error.message;
+        }
+    });
+}
+</script>
 </body>
 </html>
