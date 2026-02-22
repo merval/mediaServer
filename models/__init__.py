@@ -1,9 +1,21 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Date
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Table
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Table, ForeignKey
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
+
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False)
+
+    watch_sessions_hosted = relationship('WatchSession', back_populates='host', cascade='all, delete-orphan')
+    watch_participations = relationship('WatchSessionParticipant', back_populates='user', cascade='all, delete-orphan')
+
 
 class MediaFile(Base):
     __tablename__ = 'media_files'
@@ -12,9 +24,9 @@ class MediaFile(Base):
     title = Column(String, nullable=False)
     file_path = Column(String, unique=True, nullable=False)
     file_size = Column(Integer)
-    duration = Column(Float)  # In seconds (optional)
+    duration = Column(Float)
     last_modified = Column(DateTime)
-    media_type = Column(String)  # e.g., 'movie', 'show', 'music'
+    media_type = Column(String)
     thumbnail_path = Column(String, nullable=True)
     container = Column(String, nullable=True)
     bitrate = Column(Integer, nullable=True)
@@ -29,6 +41,7 @@ class MediaFile(Base):
 
     streams = relationship('MediaStream', back_populates='media_file', cascade='all, delete-orphan')
     playback_sessions = relationship('PlaybackSession', back_populates='media_file', cascade='all, delete-orphan')
+    watch_sessions = relationship('WatchSession', back_populates='media_file', cascade='all, delete-orphan')
 
 
 class MediaStream(Base):
@@ -62,6 +75,37 @@ class PlaybackSession(Base):
     chosen_profile = Column(String, nullable=False)
 
     media_file = relationship('MediaFile', back_populates='playback_sessions')
+
+
+class WatchSession(Base):
+    __tablename__ = 'watch_sessions'
+
+    id = Column(Integer, primary_key=True)
+    join_code = Column(String, unique=True, nullable=False)
+    host_user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    media_file_id = Column(Integer, ForeignKey('media_files.id'), nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_playing = Column(Boolean, nullable=False, default=False)
+    current_position_seconds = Column(Float, nullable=False, default=0.0)
+    last_state_updated_at = Column(DateTime, nullable=False)
+
+    host = relationship('User', back_populates='watch_sessions_hosted')
+    media_file = relationship('MediaFile', back_populates='watch_sessions')
+    participants = relationship('WatchSessionParticipant', back_populates='watch_session', cascade='all, delete-orphan')
+
+
+class WatchSessionParticipant(Base):
+    __tablename__ = 'watch_session_participants'
+
+    id = Column(Integer, primary_key=True)
+    watch_session_id = Column(Integer, ForeignKey('watch_sessions.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    joined_at = Column(DateTime, nullable=False)
+    last_seen_at = Column(DateTime, nullable=False)
+
+    watch_session = relationship('WatchSession', back_populates='participants')
+    user = relationship('User', back_populates='watch_participations')
 
 
 class Movie(Base):
@@ -110,11 +154,9 @@ class Season(Base):
     season_number = Column(Integer)
     poster_url = Column(String)
 
-    # Relationship: many episodes
     episodes = relationship('Episode', back_populates='season', cascade='all, delete-orphan')
-
-    # Back-reference to parent show
     show = relationship('TVShow', back_populates='seasons')
+
 
 class Episode(Base):
     __tablename__ = 'episodes'
@@ -126,14 +168,15 @@ class Episode(Base):
     overview = Column(String)
     duration = Column(Integer)
 
-    # Back-reference to parent season
     season = relationship('Season', back_populates='episodes')
+
 
 class Artist(Base):
     __tablename__ = 'artists'
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     bio = Column(String, nullable=True)
+
 
 class Album(Base):
     __tablename__ = 'albums'
@@ -142,6 +185,7 @@ class Album(Base):
     title = Column(String)
     release_year = Column(Integer)
     cover_url = Column(String)
+
 
 class Track(Base):
     __tablename__ = 'tracks'
@@ -152,17 +196,23 @@ class Track(Base):
     track_number = Column(Integer)
 
 
-movie_actor = Table('movie_actor', Base.metadata,
+movie_actor = Table(
+    'movie_actor',
+    Base.metadata,
     Column('movie_id', Integer, ForeignKey('movies.id')),
-    Column('actor_id', Integer, ForeignKey('actors.id'))
+    Column('actor_id', Integer, ForeignKey('actors.id')),
 )
 
-movie_director = Table('movie_director', Base.metadata,
+movie_director = Table(
+    'movie_director',
+    Base.metadata,
     Column('movie_id', Integer, ForeignKey('movies.id')),
-    Column('director_id', Integer, ForeignKey('directors.id'))
+    Column('director_id', Integer, ForeignKey('directors.id')),
 )
 
-tv_actor = Table('tv_actor', Base.metadata,
+tv_actor = Table(
+    'tv_actor',
+    Base.metadata,
     Column('show_id', Integer, ForeignKey('tv_shows.id')),
-    Column('actor_id', Integer, ForeignKey('actors.id'))
+    Column('actor_id', Integer, ForeignKey('actors.id')),
 )

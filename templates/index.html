@@ -6,16 +6,11 @@
     <title>StreamSphere</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 <header class="top-nav">
     <div class="logo">StreamSphere</div>
-    <nav>
-        <a href="#">Home</a>
-        <a href="#">TV Shows</a>
-        <a href="#">Movies</a>
-        <a href="#">My List</a>
-    </nav>
 </header>
 
 <main>
@@ -23,9 +18,9 @@
         <div>
             <p class="hero-tag">Featured Tonight</p>
             <h1>{{ featured_media.title if featured_media else 'No Media Found' }}</h1>
-            <p>Start playback for the latest ingested media file using a signed HLS playback session.</p>
             {% if featured_media %}
                 <button id="play-featured" data-media-id="{{ featured_media.id }}">Play</button>
+                <button id="create-watch" data-media-id="{{ featured_media.id }}">Create watch session</button>
             {% else %}
                 <button disabled>No playable media</button>
             {% endif %}
@@ -38,95 +33,69 @@
     </section>
 
     <section class="library-section">
-        <h2 class="library-title">Movies Library</h2>
-        {% for category, titles in movie_library.items() %}
-            <section class="category-row">
-                <h3>{{ category }}</h3>
-                {% if titles %}
-                    <div class="cards">
-                        {% for movie in titles %}
-                            <article class="card">
-                                <div class="poster-glow"></div>
-                                <div class="meta-line">
-                                    <span class="pill movie">Movie</span>
-                                    <span>{{ movie.year or '—' }}</span>
-                                    <span>{{ movie.rating or 'NR' }}</span>
-                                    <span>{{ movie.duration or '—' }}</span>
-                                </div>
-                                <h4>{{ movie.title }}</h4>
-                                <p class="genre">{{ movie.genre or 'Unknown' }}</p>
-                                <p>{{ movie.description or 'No description available yet.' }}</p>
-                            </article>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p>No movies found in the library yet.</p>
-                {% endif %}
-            </section>
-        {% endfor %}
-    </section>
+        <h2>Login</h2>
+        <input id="username" placeholder="username">
+        <input id="password" placeholder="password" type="password">
+        <button id="register-btn">Register</button>
+        <button id="login-btn">Login</button>
+        <button id="logout-btn">Logout</button>
+        <p id="auth-status"></p>
 
-    <section class="library-section">
-        <h2 class="library-title">TV Shows Library</h2>
-        {% for category, titles in show_library.items() %}
-            <section class="category-row">
-                <h3>{{ category }}</h3>
-                {% if titles %}
-                    <div class="cards">
-                        {% for show in titles %}
-                            <article class="card">
-                                <div class="poster-glow"></div>
-                                <div class="meta-line">
-                                    <span class="pill show">TV Show</span>
-                                    <span>{{ show.year or '—' }}</span>
-                                    <span>{{ show.rating or 'NR' }}</span>
-                                </div>
-                                <h4>{{ show.title }}</h4>
-                                <p class="genre">{{ show.genre or 'Unknown' }}</p>
-                                <p>{{ show.description or 'No description available yet.' }}</p>
-                                <div class="season-box">
-                                    <h5>Seasons</h5>
-                                    {% if show.seasons %}
-                                        <ul>
-                                            {% for season in show.seasons %}
-                                                <li>{{ season.name }} · {{ season.episodes }} episodes</li>
-                                            {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        <p>No season data available.</p>
-                                    {% endif %}
-                                </div>
-                            </article>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p>No TV shows found in the library yet.</p>
-                {% endif %}
-            </section>
-        {% endfor %}
+        <h2>Join watch session</h2>
+        <input id="join-code" placeholder="Join code (e.g. A1B2C3)">
+        <button id="join-session">Join</button>
+        <p id="join-status"></p>
     </section>
 </main>
 <script>
 const playButton = document.getElementById('play-featured');
+const createWatchButton = document.getElementById('create-watch');
 const statusNode = document.getElementById('player-status');
+const authStatusNode = document.getElementById('auth-status');
+const joinStatusNode = document.getElementById('join-status');
 const videoElement = document.getElementById('hls-player');
+const socket = io();
 
-async function startPlayback(mediaId) {
-    const userSession = localStorage.getItem('streamsphere_user_session') || crypto.randomUUID();
-    localStorage.setItem('streamsphere_user_session', userSession);
+let activeWatchSessionId = null;
 
-    const response = await fetch('/api/playback/sessions', {
+async function postJSON(url, body) {
+    const response = await fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({media_id: Number(mediaId), user_session_id: userSession})
+        body: JSON.stringify(body || {})
     });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || 'Request failed');
+    return payload;
+}
 
-    if (!response.ok) {
-        const errorPayload = await response.json().catch(() => ({}));
-        throw new Error(errorPayload.error || 'Unable to start playback session');
-    }
+async function refreshAuthState() {
+    const response = await fetch('/api/auth/me');
+    const payload = await response.json();
+    authStatusNode.textContent = payload.authenticated ? `Logged in as ${payload.username}` : 'Not logged in';
+}
 
-    return response.json();
+async function register() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    await postJSON('/api/auth/register', {username, password});
+    authStatusNode.textContent = 'Registered, now login.';
+}
+
+async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const payload = await postJSON('/api/auth/login', {username, password});
+    authStatusNode.textContent = `Logged in as ${payload.username}`;
+}
+
+async function logout() {
+    await postJSON('/api/auth/logout');
+    authStatusNode.textContent = 'Logged out';
+}
+
+async function startPlayback(mediaId) {
+    return postJSON('/api/playback/sessions', {media_id: Number(mediaId)});
 }
 
 function attachHls(masterUrl) {
@@ -147,6 +116,48 @@ function attachHls(masterUrl) {
     throw new Error('HLS is not supported in this browser.');
 }
 
+async function createWatchSession(mediaId) {
+    const payload = await postJSON('/api/watch-sessions', {media_id: Number(mediaId)});
+    joinStatusNode.textContent = `Join code: ${payload.join_code}. Link: ${payload.join_link}`;
+    document.getElementById('join-code').value = payload.join_code;
+    await joinByCode(payload.join_code);
+}
+
+async function joinByCode(joinCode) {
+    const payload = await postJSON('/api/watch-sessions/join', {join_code: joinCode});
+    activeWatchSessionId = payload.watch_session_id;
+    socket.emit('join', {join_code: joinCode});
+    joinStatusNode.textContent = `Joined watch session ${joinCode}`;
+}
+
+socket.on('state_sync', (state) => {
+    if (!state || !activeWatchSessionId || state.watch_session_id !== activeWatchSessionId) return;
+    const drift = Math.abs((videoElement.currentTime || 0) - state.position_seconds);
+    if (drift > 1.0) {
+        videoElement.currentTime = state.position_seconds;
+    }
+    if (state.is_playing && videoElement.paused) {
+        videoElement.play().catch(() => {});
+    }
+    if (!state.is_playing && !videoElement.paused) {
+        videoElement.pause();
+    }
+    statusNode.textContent = `Synced state at ${state.position_seconds.toFixed(2)}s`;
+});
+
+videoElement.addEventListener('play', () => {
+    if (activeWatchSessionId) socket.emit('play', {watch_session_id: activeWatchSessionId, position_seconds: videoElement.currentTime});
+});
+videoElement.addEventListener('pause', () => {
+    if (activeWatchSessionId) socket.emit('pause', {watch_session_id: activeWatchSessionId, position_seconds: videoElement.currentTime});
+});
+videoElement.addEventListener('seeked', () => {
+    if (activeWatchSessionId) socket.emit('seek', {watch_session_id: activeWatchSessionId, position_seconds: videoElement.currentTime});
+});
+setInterval(() => {
+    if (activeWatchSessionId) socket.emit('state_sync', {watch_session_id: activeWatchSessionId, position_seconds: videoElement.currentTime});
+}, 2500);
+
 if (playButton) {
     playButton.addEventListener('click', async () => {
         statusNode.textContent = 'Preparing stream...';
@@ -159,6 +170,31 @@ if (playButton) {
         }
     });
 }
+if (createWatchButton) {
+    createWatchButton.addEventListener('click', async () => {
+        try {
+            await createWatchSession(createWatchButton.dataset.mediaId);
+        } catch (error) {
+            joinStatusNode.textContent = error.message;
+        }
+    });
+}
+document.getElementById('join-session').addEventListener('click', async () => {
+    try {
+        await joinByCode(document.getElementById('join-code').value);
+    } catch (error) {
+        joinStatusNode.textContent = error.message;
+    }
+});
+document.getElementById('register-btn').addEventListener('click', () => register().catch((e) => authStatusNode.textContent = e.message));
+document.getElementById('login-btn').addEventListener('click', () => login().catch((e) => authStatusNode.textContent = e.message));
+document.getElementById('logout-btn').addEventListener('click', () => logout().catch((e) => authStatusNode.textContent = e.message));
+
+const initialJoin = new URLSearchParams(window.location.search).get('join');
+if (initialJoin) {
+    document.getElementById('join-code').value = initialJoin;
+}
+refreshAuthState();
 </script>
 </body>
 </html>
