@@ -1,0 +1,22 @@
+services:
+  mediaserver:
+    build: .
+    container_name: mediaserver
+    ports:
+      - "5000:5000"
+    environment:
+      TMDB_API_KEY: ${TMDB_API_KEY}
+      TMDB_LANGUAGE: ${TMDB_LANGUAGE:-en}
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-change-me-session-secret}
+      PLAYBACK_TOKEN_SECRET: ${PLAYBACK_TOKEN_SECRET:-change-me-playback-secret}
+      PLAYBACK_TOKEN_MAX_AGE_SECONDS: ${PLAYBACK_TOKEN_MAX_AGE_SECONDS:-300}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/media_library.db}
+      SCANNER_MEDIA_ROOT: ${SCANNER_MEDIA_ROOT:-/media}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/media}
+      PLAYBACK_OUTPUT_ROOT: ${PLAYBACK_OUTPUT_ROOT:-/playback_output}
+      FLASK_DEBUG: ${FLASK_DEBUG:-false}
+    volumes:
+      - ./data:/data
+      - ./media:/media
+      - ./playback_output:/playback_output
+    restart: unless-stopped
