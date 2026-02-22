@@ -33,6 +33,7 @@ TMDB_LANGUAGE = _read_env('TMDB_LANGUAGE', 'en')
 PLAYBACK_OUTPUT_ROOT = _read_env('PLAYBACK_OUTPUT_ROOT', './playback_output')
 PLAYBACK_TOKEN_SECRET = _read_env('PLAYBACK_TOKEN_SECRET', 'dev-playback-secret')
 PLAYBACK_TOKEN_MAX_AGE_SECONDS = int(_read_env('PLAYBACK_TOKEN_MAX_AGE_SECONDS', '300'))
+FLASK_SECRET_KEY = _read_env('FLASK_SECRET_KEY', 'dev-session-secret')
 
 ENGINE = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=ENGINE)

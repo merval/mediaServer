@@ -4,7 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+flask = "*"
 flask-sqlalchemy = "*"
+flask-socketio = "*"
+sqlalchemy = "*"
+tmdbv3api = "*"
 
 [dev-packages]
 
